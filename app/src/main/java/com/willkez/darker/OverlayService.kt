@@ -6,7 +6,6 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.IBinder
 import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -28,8 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.ViewTreeLifecycleOwner
-import androidx.savedstate.ViewTreeSavedStateRegistryOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 class OverlayService : LifecycleService() {
 
@@ -90,9 +89,12 @@ class OverlayService : LifecycleService() {
 
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
-    private fun setupComposeView(view: View) {
-        ViewTreeLifecycleOwner.set(view, this)
-        ViewTreeSavedStateRegistryOwner.set(view, null)
+    private fun makeComposeView(block: ComposeView.() -> Unit): ComposeView {
+        return ComposeView(this).apply {
+            setViewTreeLifecycleOwner(this@OverlayService)
+            setViewTreeSavedStateRegistryOwner(null)
+            block()
+        }
     }
 
     private fun showBubble() {
@@ -107,9 +109,8 @@ class OverlayService : LifecycleService() {
             x = 24
             y = 200
         }
-        bubbleView = ComposeView(this).also { cv ->
-            setupComposeView(cv)
-            cv.setContent {
+        bubbleView = makeComposeView {
+            setContent {
                 Box(
                     modifier = Modifier
                         .size(60.dp)
@@ -122,8 +123,8 @@ class OverlayService : LifecycleService() {
                     Text("●", color = Color.White, fontSize = 24.sp)
                 }
             }
-            windowManager.addView(cv, params)
         }
+        windowManager.addView(bubbleView, params)
     }
 
     private fun removeBubble() {
@@ -149,9 +150,8 @@ class OverlayService : LifecycleService() {
         ).apply {
             gravity = Gravity.TOP or Gravity.START
         }
-        blackView = ComposeView(this).also { cv ->
-            setupComposeView(cv)
-            cv.setContent {
+        blackView = makeComposeView {
+            setContent {
                 var lastTapTime by remember { mutableLongStateOf(0L) }
                 Box(
                     modifier = Modifier
@@ -171,8 +171,8 @@ class OverlayService : LifecycleService() {
                         }
                 )
             }
-            windowManager.addView(cv, params)
         }
+        windowManager.addView(blackView, params)
     }
 
     private fun removeBlackOverlay() {
