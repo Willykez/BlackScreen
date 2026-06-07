@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +40,7 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
     private var blackView: ComposeView? = null
 
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
+
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateRegistryController.savedStateRegistry
 
@@ -66,6 +70,12 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
         return null
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
+        if (intent?.action == "STOP") stopSelf()
+        return START_STICKY
+    }
+
     private fun buildNotification(): Notification {
         val openIntent = PendingIntent.getActivity(
             this, 0,
@@ -87,18 +97,12 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
             .build()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
-        if (intent?.action == "STOP") {
-            stopSelf()
-        }
-        return START_STICKY
-    }
+    private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
     private fun showBubble() {
+        val size = dpToPx(64)
         val params = WindowManager.LayoutParams(
-            120.dp.toPx(),
-            120.dp.dp.toPx(),
+            size, size,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
@@ -107,7 +111,6 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
             x = 24
             y = 200
         }
-
         bubbleView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@OverlayService)
             setViewTreeSavedStateRegistryOwner(this@OverlayService)
@@ -151,7 +154,6 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
         ).apply {
             gravity = Gravity.TOP or Gravity.START
         }
-
         blackView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@OverlayService)
             setViewTreeSavedStateRegistryOwner(this@OverlayService)
@@ -185,7 +187,4 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
             blackView = null
         }
     }
-
-    private fun Int.toPx(): Int = (this * resources.displayMetrics.density).toInt()
-    private val Int.dp get() = this
 }
